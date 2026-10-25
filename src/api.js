@@ -1,0 +1,10 @@
+import axios from 'axios';
+import { API_URL } from './config';
+let token = null, onUnauthorized = null;
+export const setToken = (t) => { token = t; };
+export const setUnauthorizedHandler = (fn) => { onUnauthorized = fn; };
+const api = axios.create({ baseURL: API_URL + '/api', timeout: 15000 });
+api.interceptors.request.use((c) => { if (token) c.headers.Authorization = `Bearer ${token}`; return c; });
+api.interceptors.response.use((r) => r, (e) => { if (e?.response?.status === 401 && token && onUnauthorized) onUnauthorized(); return Promise.reject(e); });
+export const errMsg = (e) => e?.response?.data?.message || (e?.message === 'Network Error' ? 'Cannot reach the server. Check your connection.' : e?.message) || 'Something went wrong';
+export default api;
