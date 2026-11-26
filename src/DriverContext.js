@@ -73,6 +73,7 @@ export function DriverProvider({ children }) {
 
   // ---------- online / offline ----------
   const goOnline = useCallback(async () => {
+    preloadSiren().catch(() => {});
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') throw new Error('Location permission is required to receive emergency requests.');
     onFix(await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }));
@@ -100,6 +101,7 @@ export function DriverProvider({ children }) {
     const pick = toLL(o.pickup.coordinates); let km = o.distanceKm, eta = o.etaMinutes;
     if (km == null && posRef.current) { km = +distanceKm(posRef.current, pick).toFixed(2); eta = etaMinutes(km); }
     setOffers((l) => [...l, { id: o.bookingId, pickup: o.pickup.coordinates, distanceKm: km, etaMinutes: eta, expiresInMs: o.expiresInMs, key: Date.now(), state: 'active' }]);
+    startSiren().catch(() => {});
   };
 
   // siren rings while at least one offer is awaiting a decision
@@ -108,6 +110,7 @@ export function DriverProvider({ children }) {
   useEffect(() => { preloadSiren(); return () => { stopSiren(); }; }, []);
 
   const acceptOffer = async (id) => {
+    stopSiren().catch(() => {});
     patchOffer(id, { state: 'accepting' });           // stops the siren immediately
     try {
       const { data: b } = await api.post(`/driver/bookings/${id}/accept`);
@@ -120,7 +123,11 @@ export function DriverProvider({ children }) {
       else { patchOffer(id, { state: 'active' }); throw e; }
     }
   };
-  const rejectOffer = (id) => { dropOffer(id); api.post(`/driver/bookings/${id}/reject`).catch(() => {}); };
+  const rejectOffer = (id) => {
+    stopSiren().catch(() => {});
+    dropOffer(id);
+    api.post(`/driver/bookings/${id}/reject`).catch(() => {});
+  };
 
   // ---------- trip actions ----------
   const advance = async (next) => {
@@ -202,9 +209,16 @@ export function DriverProvider({ children }) {
   }, [token, tripKey]);
 
   const logout = async () => {
-    if (tripRef.current) throw new Error('You have an active trip. Finish it before signing out.');
+    want.current = false;
+    try { stopSiren(); } catch {}
+    try { stopWatch(); } catch {}
+    try { deactivateKeepAwakeSafe('online'); } catch {}
+    setOffers([]);
+    setTrip(null);
+    tripRef.current = null;
+    if (tripKey) safeStorage.removeItem(tripKey).catch(() => {});
     try { await api.patch('/driver/online', { online: false }); } catch {}
-    want.current = false; stopWatch(); deactivateKeepAwakeSafe('online'); await signOut();
+    await signOut();
   };
 
   return (
