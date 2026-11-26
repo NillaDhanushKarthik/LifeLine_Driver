@@ -14,5 +14,9 @@ module.exports = { expo: {
     ['expo-location', { locationWhenInUsePermission: why }],
     ['expo-image-picker', { photosPermission: 'Choose photos of your license, RC book and profile.', cameraPermission: 'Take photos of your license, RC book and profile.' }],
   ],
-
+  extra: {
+    eas: {
+      projectId: 'a2b9749a-5361-4e45-a7de-f3cc9ba90f1d'
+    }
+  }
 } };

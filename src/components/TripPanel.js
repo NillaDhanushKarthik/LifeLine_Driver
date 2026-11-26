@@ -1,7 +1,7 @@
 // Bottom sheet that walks the driver through the trip status machine:
 // ACCEPTED -> DRIVER_ARRIVING -> ARRIVED -> PATIENT PICKED -> TRIP_STARTED -> COMPLETED
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Alert, Pressable, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, Pressable, Linking, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Btn } from './ui';
 import { useDriver } from '../DriverContext';
@@ -194,11 +194,26 @@ export default function TripPanel({ target, targetLabel, etaMin, distKm }) {
             </>
           ) : (
             <View>
-              <View style={s.multiBadgeBanner}>
-                <Ionicons name="shield-checkmark" size={14} color={C.ok} />
-                <Text style={s.multiBadgeText}>Verified Emergency-Attending Hospitals Only</Text>
+              {/* Header row with Title and 'X' close button to go back */}
+              <View style={s.pickerHeader}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <View style={s.multiBadgeBanner}>
+                    <Ionicons name="shield-checkmark" size={14} color={C.ok} />
+                    <Text style={s.multiBadgeText}>Verified Emergency Hospitals</Text>
+                  </View>
+                  <Text style={s.hPickH}>Select Destination Hospital:</Text>
+                </View>
+                <Pressable
+                  hitSlop={12}
+                  onPress={() => setShowPicker(false)}
+                  style={({ pressed }) => [s.closeBtn, pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }]}
+                  accessibilityLabel="Close hospital list"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="close" size={22} color={C.navy} />
+                </Pressable>
               </View>
-              <Text style={s.hPickH}>Select Destination Hospital:</Text>
+
               <Text style={s.hPickSub}>Only hospitals with an active 24/7 Casualty & Trauma Bay that attend acute emergency admissions are listed.</Text>
               {!list && !err && <ActivityIndicator color={C.blue} style={{ marginVertical: 14 }} />}
               {err && (
@@ -207,38 +222,49 @@ export default function TripPanel({ target, targetLabel, etaMin, distKm }) {
                   <Btn title="Retry" variant="ghost" onPress={fetchHospitals} style={{ marginTop: 8, height: 44 }} />
                 </View>
               )}
-              {list?.map((h, i) => {
-                const hId = h.id || h._id;
-                const isSelected = sel === hId;
-                const hPhone = h.emergencyPhone || '108';
-                return (
-                  <Pressable key={hId} onPress={() => setSel(hId)} style={[s.hosp, isSelected && s.hospOn]}>
-                    <Ionicons name={isSelected ? 'radio-button-on' : 'radio-button-off'} size={22} color={isSelected ? C.blue : C.mute} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={s.hName}>{h.name}</Text>
-                      <View style={s.attendingBadge}>
-                        <Ionicons name="checkmark-circle" size={12} color={C.ok} />
-                        <Text style={s.attendingText}>Attends Emergency Cases · 24/7 ER Active</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                        <Text style={s.hSub}>
-                          {h.distanceKm != null ? `${h.distanceKm.toFixed(1)} km` : ''}
-                          {h.etaMinutes != null ? ` · ~${h.etaMinutes} min` : ''}
-                          {i === 0 ? ' · Nearest' : ''}
-                        </Text>
-                        <Pressable
-                          hitSlop={8}
-                          onPress={() => Linking.openURL(`tel:${hPhone}`)}
-                          style={s.miniCallBtn}
-                        >
-                          <Ionicons name="call" size={11} color={C.blue} />
-                          <Text style={s.miniCallText}>Pre-Alert ER</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {list && list.length > 0 && (
+                <ScrollView
+                  style={s.hospListScroll}
+                  contentContainerStyle={s.hospListScrollContent}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  bounces={true}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {list.map((h, i) => {
+                    const hId = h.id || h._id;
+                    const isSelected = sel === hId;
+                    const hPhone = h.emergencyPhone || '108';
+                    return (
+                      <Pressable key={hId} onPress={() => setSel(hId)} style={[s.hosp, isSelected && s.hospOn]}>
+                        <Ionicons name={isSelected ? 'radio-button-on' : 'radio-button-off'} size={22} color={isSelected ? C.blue : C.mute} />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <Text style={s.hName}>{h.name}</Text>
+                          <View style={s.attendingBadge}>
+                            <Ionicons name="checkmark-circle" size={12} color={C.ok} />
+                            <Text style={s.attendingText}>Attends Emergency Cases · 24/7 ER Active</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                            <Text style={s.hSub}>
+                              {h.distanceKm != null ? `${h.distanceKm.toFixed(1)} km` : ''}
+                              {h.etaMinutes != null ? ` · ~${h.etaMinutes} min` : ''}
+                              {i === 0 ? ' · Nearest' : ''}
+                            </Text>
+                            <Pressable
+                              hitSlop={8}
+                              onPress={() => Linking.openURL(`tel:${hPhone}`)}
+                              style={s.miniCallBtn}
+                            >
+                              <Ionicons name="call" size={11} color={C.blue} />
+                              <Text style={s.miniCallText}>Pre-Alert ER</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
               <Btn
                 big
                 variant="primary"
@@ -288,7 +314,7 @@ export default function TripPanel({ target, targetLabel, etaMin, distKm }) {
 }
 
 const s = StyleSheet.create({
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, paddingBottom: 26 },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '92%', backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, paddingBottom: 26 },
   grab: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: C.line, marginBottom: 14 },
   steps: { flexDirection: 'row', marginBottom: 14 },
   bar: { height: 5, borderRadius: 3, backgroundColor: C.line, marginRight: 4 },
@@ -301,8 +327,12 @@ const s = StyleSheet.create({
   v: { fontSize: 26, fontWeight: '800', color: C.navy },
   u: { fontSize: 14, fontWeight: '600', color: C.mute },
   l: { fontSize: 12, color: C.mute, marginTop: 2 },
+  pickerHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 2 },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2F6', alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginTop: 2 },
   hPickH: { fontSize: 16, fontWeight: '800', color: C.navy, marginBottom: 2 },
-  hPickSub: { fontSize: 12, color: C.mute, marginBottom: 12, lineHeight: 16 },
+  hPickSub: { fontSize: 12, color: C.mute, marginBottom: 8, lineHeight: 16 },
+  hospListScroll: { maxHeight: Math.min(290, Dimensions.get('window').height * 0.38), marginVertical: 4 },
+  hospListScrollContent: { paddingVertical: 2, paddingRight: 2 },
   multiBadgeBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, marginBottom: 10, alignSelf: 'flex-start' },
   multiBadgeText: { fontSize: 12, fontWeight: '700', color: C.ok, marginLeft: 6 },
   attendingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start', marginVertical: 3 },

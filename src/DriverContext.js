@@ -7,18 +7,18 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
-import * as SecureStore from 'expo-secure-store';
+import storage from './storage';
 import api from './api';
 import { useAuth } from './AuthContext';
 import { connectSocket } from './socket';
 import { startSiren, stopSiren, preloadSiren } from './siren';
 import { distanceKm, etaMinutes, toLL } from './util';
 
-// Safe persistent storage using Expo's built-in SecureStore (prevents "NativeModule: AsyncStorage is null")
+// Safe persistent storage supporting both Native (SecureStore) and Web (localStorage)
 const safeStorage = {
-  setItem: (k, v) => SecureStore.setItemAsync(k.replace(/[^a-zA-Z0-9._-]/g, '_'), v),
-  getItem: (k) => SecureStore.getItemAsync(k.replace(/[^a-zA-Z0-9._-]/g, '_')),
-  removeItem: (k) => SecureStore.deleteItemAsync(k.replace(/[^a-zA-Z0-9._-]/g, '_')),
+  setItem: (k, v) => storage.setItem(k.replace(/[^a-zA-Z0-9._-]/g, '_'), v),
+  getItem: (k) => storage.getItem(k.replace(/[^a-zA-Z0-9._-]/g, '_')),
+  removeItem: (k) => storage.deleteItem(k.replace(/[^a-zA-Z0-9._-]/g, '_')),
 };
 
 // Safe keep awake wrapper

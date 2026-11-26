@@ -394,6 +394,8 @@ const LeafletMap = forwardRef(function LeafletMap(
       fixSize();
       if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_READY' }));
+      } else if (window.parent && window.parent.postMessage) {
+        window.parent.postMessage(JSON.stringify({ type: 'MAP_READY' }), '*');
       }
     }, 50);
   </script>
