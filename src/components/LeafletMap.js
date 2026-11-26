@@ -18,6 +18,7 @@ const LeafletMap = forwardRef(function LeafletMap(
   ref
 ) {
   const webViewRef = useRef(null);
+  const iframeRef = useRef(null);
   const isReadyRef = useRef(false);
   const [, setIsReady] = useState(false);
 
@@ -45,12 +46,35 @@ const LeafletMap = forwardRef(function LeafletMap(
   payloadRef.current = currentPayload;
 
   const sendToMap = useCallback((msgObj) => {
-    if (webViewRef.current) {
+    if (Platform.OS === 'web') {
+      try {
+        iframeRef.current?.contentWindow?.postMessage(JSON.stringify(msgObj), '*');
+      } catch {}
+    } else if (webViewRef.current) {
       try {
         webViewRef.current.postMessage(JSON.stringify(msgObj));
       } catch {}
     }
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleWebMsg = (event) => {
+        try {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (data && data.type === 'MAP_READY') {
+            isReadyRef.current = true;
+            setIsReady(true);
+            if (payloadRef.current) {
+              sendToMap({ type: 'UPDATE', payload: payloadRef.current });
+            }
+          }
+        } catch {}
+      };
+      window.addEventListener('message', handleWebMsg);
+      return () => window.removeEventListener('message', handleWebMsg);
+    }
+  }, [sendToMap]);
 
   useImperativeHandle(ref, () => ({
     animateCamera: ({ center, zoom = 15 }) => {
@@ -401,6 +425,19 @@ const LeafletMap = forwardRef(function LeafletMap(
   </script>
 </body>
 </html>`, []);
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.container, style]}>
+        <iframe
+          ref={iframeRef}
+          srcDoc={htmlContent}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title="Leaflet Map"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, style]}>
