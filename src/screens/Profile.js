@@ -16,10 +16,10 @@ export default function Profile() {
   return (
     <ScrollView style={{ backgroundColor: '#fff' }} contentContainerStyle={{ padding: 20 }}>
       <View style={s.head}><View style={s.avatar}><Ionicons name="person" size={36} color={C.blue} /></View>
-        <Text style={s.name}>{driver?.fullName}</Text>
+        <Text style={s.name}>{driver?.fullName || driver?.name || 'Ambulance Driver'}</Text>
         <View style={s.badge}><Ionicons name="shield-checkmark" size={14} color={C.ok} /><Text style={s.badgeT}>Verified by hospital</Text></View></View>
       <Row icon="call-outline" label="Phone" value={driver?.phone} />
-      <Row icon="car-outline" label="Ambulance registration" value={driver?.vehicleNumber} />
+      <Row icon="car-outline" label="Ambulance registration" value={driver?.ambulanceNumber || driver?.vehicleNumber || 'Registered Unit'} />
       <Btn title="Sign out" variant="outline" onPress={out} style={{ marginTop: 26 }} />
     </ScrollView>
   );

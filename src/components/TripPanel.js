@@ -1,7 +1,7 @@
 // Bottom sheet that walks the driver through the trip status machine:
 // ACCEPTED -> DRIVER_ARRIVING -> ARRIVED -> PATIENT PICKED -> TRIP_STARTED -> COMPLETED
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Alert, Pressable, Linking, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Alert, Pressable, Linking, ActivityIndicator, ScrollView, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Btn } from './ui';
 import { useDriver } from '../DriverContext';
@@ -96,17 +96,48 @@ export default function TripPanel({ target, targetLabel, etaMin, distKm }) {
     />
   );
 
-  const complete = () =>
+  const complete = () => {
+    const doComplete = async () => {
+      // If the backend is still in ARRIVED or intermediate state, transition to TRIP_STARTED first so the state machine permits completion
+      if (['ARRIVED', 'PATIENT_PICKED'].includes(norm)) {
+        try {
+          await advance('TRIP_STARTED');
+        } catch {}
+      }
+      await advance('COMPLETED');
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm) {
+        if (window.confirm('Complete Trip?\n\nConfirm the patient has safely arrived and been handed over at the hospital.')) {
+          run(doComplete);
+        }
+      } else {
+        run(doComplete);
+      }
+      return;
+    }
     Alert.alert(
       'Complete Trip?',
       'Confirm the patient has safely arrived and been handed over at the hospital.',
       [
         { text: 'Not yet', style: 'cancel' },
-        { text: 'Complete', onPress: () => run(() => advance('COMPLETED')) },
+        { text: 'Complete', onPress: () => run(doComplete) },
       ]
     );
+  };
 
-  const clear = () =>
+  const clear = () => {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm) {
+        if (window.confirm('Clear this trip?\n\nUse this only if the request was cancelled or is already finished.')) {
+          clearTripLocal();
+        }
+      } else {
+        clearTripLocal();
+      }
+      return;
+    }
     Alert.alert(
       'Clear this trip?',
       'Use this only if the request was cancelled or is already finished.',
@@ -115,6 +146,7 @@ export default function TripPanel({ target, targetLabel, etaMin, distKm }) {
         { text: 'Clear trip', style: 'destructive', onPress: clearTripLocal },
       ]
     );
+  };
 
   return (
     <View style={[s.sheet, shadow]}>
@@ -182,7 +214,10 @@ export default function TripPanel({ target, targetLabel, etaMin, distKm }) {
                 variant="ok"
                 icon="person-add"
                 title="PATIENT PICKED UP"
-                onPress={() => setShowPicker(true)}
+                onPress={() => {
+                  advance('TRIP_STARTED').catch(() => {});
+                  setShowPicker(true);
+                }}
                 loading={busy}
               />
               <Btn

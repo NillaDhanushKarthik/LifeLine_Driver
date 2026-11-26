@@ -11,7 +11,14 @@ export default function Login({ navigation }) {
     setBusy(true);
     try {
       const { data } = await api.post('/auth/driver/login', { phone: phone.trim(), password });
-      await signIn(data.token, { ...data.driver, phone: phone.trim() });
+      const driverObj = {
+        id: data.driver?.id || data.user?.id,
+        fullName: data.user?.fullName || data.driver?.name || 'Driver',
+        vehicleNumber: data.driver?.ambulanceNumber || data.driver?.vehicleNumber || 'Ambulance',
+        phone: phone.trim(),
+        ...data.driver,
+      };
+      await signIn(data.token, driverObj);
     } catch (e) {
       setBusy(false); const m = errMsg(e);
       if (e?.response?.status === 403) navigation.navigate('Pending', { phone: phone.trim(), password, message: m });   // pending or rejected

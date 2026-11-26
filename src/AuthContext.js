@@ -20,7 +20,26 @@ export function AuthProvider({ children }) {
     (async () => {
       const t = await storage.getItem('dtoken');
       let d = null; try { d = JSON.parse(await storage.getItem('ddriver')); } catch {}
-      if (t && d) { setToken(t); setS({ loading: false, token: t, driver: d }); } else setS({ loading: false, token: null, driver: null });
+      if (t) {
+        setToken(t);
+        setS({ loading: false, token: t, driver: d });
+        // Automatically sync latest driver profile from server
+        api.get('/auth/me').then(async (res) => {
+          if (res?.data?.driver) {
+            const updated = {
+              ...(d || {}),
+              ...res.data.driver,
+              fullName: res.data.user?.fullName || res.data.driver?.name || d?.fullName || 'Driver',
+              vehicleNumber: res.data.driver?.ambulanceNumber || res.data.driver?.vehicleNumber || d?.vehicleNumber || 'Ambulance',
+              phone: res.data.user?.phone || d?.phone,
+            };
+            await storage.setItem('ddriver', JSON.stringify(updated));
+            setS({ loading: false, token: t, driver: updated });
+          }
+        }).catch(() => {});
+      } else {
+        setS({ loading: false, token: null, driver: null });
+      }
     })();
   }, []);
   return <Ctx.Provider value={{ ...s, signIn, signOut }}>{children}</Ctx.Provider>;

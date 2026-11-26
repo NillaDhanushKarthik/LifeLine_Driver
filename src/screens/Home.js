@@ -88,7 +88,7 @@ export default function Home({ navigation }) {
           <Text style={s.h}>{online ? 'Waiting for emergencies' : 'You are offline'}</Text>
           <Text style={s.sub}>{online ? 'Keep this screen open. A loud alert rings when a request arrives.' : 'Go online to start receiving emergency requests near you.'}</Text>
           <View style={s.switchRow}>
-            <View style={{ flex: 1 }}><Text style={s.sw}>{online ? 'Online' : 'Offline'}</Text><Text style={s.swSub}>{driver?.vehicleNumber}</Text></View>
+            <View style={{ flex: 1 }}><Text style={s.sw}>{online ? 'Online' : 'Offline'}</Text><Text style={s.swSub}>{driver?.ambulanceNumber || driver?.vehicleNumber || 'Ambulance Unit'}</Text></View>
             <Switch value={online} disabled={switching} onValueChange={toggle} trackColor={{ false: '#C9D3E8', true: '#8FE0B1' }} thumbColor={online ? C.ok : '#fff'} style={{ transform: [{ scale: 1.35 }] }} />
           </View>
         </View>)}

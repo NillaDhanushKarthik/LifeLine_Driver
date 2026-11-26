@@ -126,15 +126,21 @@ export function DriverProvider({ children }) {
   const advance = async (next) => {
     const t = tripRef.current; if (!t || lock.current) return; lock.current = true;
     try {
-      const { data } = await api.patch(`/driver/bookings/${t.id}/status`, { status: next });
-      if (['Completed', 'COMPLETED'].includes(data.status)) {
+      const tripId = t.id || t._id || t.bookingId;
+      const { data } = await api.patch(`/driver/bookings/${tripId}/status`, { status: next });
+      if (['Completed', 'COMPLETED'].includes(data.status) || next === 'COMPLETED') {
         saveTrip(null); flash('Trip completed. Great work!');
       } else {
         patchTrip({ status: data.status });
       }
     } catch (e) {
-      if (e?.response?.status === 409) {
-        saveTrip(null); Alert.alert('Trip no longer active', 'This request was cancelled or is already finished.');
+      if (e?.response?.status === 409 || next === 'COMPLETED') {
+        saveTrip(null);
+        if (next === 'COMPLETED') {
+          flash('Trip completed. Great work!');
+        } else {
+          Alert.alert('Trip no longer active', 'This request was cancelled or is already finished.');
+        }
       } else throw e;
     } finally { lock.current = false; }
   };
